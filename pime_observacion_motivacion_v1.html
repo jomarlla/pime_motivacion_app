@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observación de Motivación (PostgreSQL)</title>
+  <style>
+    /* Estilos generales */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      padding: 1rem;
+      max-width: 750px;
+      margin: auto;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    h1 {
+      color: #0056b3;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.6rem;
+    }
+    /* Estilos para etiquetas y controles de formulario */
+    label {
+      display: block;
+      margin-top: 1rem;
+      margin-bottom: 0.25rem;
+      font-weight: bold;
+      color: #495057;
+    }
+    select, input[type="date"], input[type="file"]#file {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.25rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ced4da;
+      box-sizing: border-box;
+      background-color: #fff;
+    }
+    input[type="file"]#file {
+      border: 1px dashed #007bff;
+      background-color: #e9f5ff;
+      cursor: pointer;
+    }
+    #nombreFichero {
+      font-size: 0.9rem;
+      color: #6c757d;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+    }
+    /* --- Estilos para Dimensiones e Ítems (Más Compactos) --- */
+    .dimension {
+      margin-top: 1.5rem;
+      padding-top: 0.8rem;
+      border-top: 2px solid #007bff;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      padding: 0.8rem 1rem;
+    }
+    .dimension:first-child {
+        margin-top: 1rem;
+        border-top: none;
+    }
+    .dimension h3 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: #0056b3;
+      font-size: 1.1em;
+      text-align: center;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 0.4rem;
+    }
+    .items-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* Dos columnas por defecto */
+        gap: 1rem;
+    }
+    .item {
+      margin-top: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+      display: flex;
+      flex-direction: column;
+    }
+    .item label {
+        margin-top: 0;
+        font-weight: normal;
+        color: #343a40;
+        margin-bottom: 0.3rem;
+        font-size: 0.85rem;
+        line-height: 1.3;
+    }
+
+    /* --- Estilos para el Botón Cíclico (Más Compacto) --- */
+    .btn-cycle {
+      padding: 0.6rem 0.8rem;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      color: white;
+      transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+      font-weight: bold;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .btn-cycle:active { transform: scale(0.98); }
+    .btn-state-unmarked { background-color: #007bff; color: white; }
+    .btn-state-unmarked:hover { background-color: #0056b3; }
+    .btn-state-yes { background-color: #28a745; color: white; }
+    .btn-state-yes:hover { background-color: #218838; }
+    .btn-state-no { background-color: #dc3545; color: white; }
+    .btn-state-no:hover { background-color: #c82333; }
+
+    /* Mensaje de nuevo registro */
+    .nuevo-registro { margin-top: 1rem; padding: 0.75rem; background: #fff3cd; color: #856404; text-align: center; font-weight: bold; border-radius: 8px; border: 1px solid #ffeeba; display: none; font-size: 0.9rem;}
+    /* Puntuación */
+    .score { margin-top: 1.5rem; margin-bottom: 1rem; font-weight: bold; font-size: 1.2rem; text-align: center; color: #0056b3; padding: 0.5rem; background-color: #e9ecef; border-radius: 8px; }
+    /* Botones de acción */
+    .action-buttons {
+      margin-top: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* Dos columnas por defecto */
+      gap: 0.75rem;
+    }
+    .button, .button-secondary, .button-warning, .button-danger { /* Incluir nuevo estilo */
+      margin-top: 0;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      width: 100%;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      box-sizing: border-box;
+      text-align: center;
+      font-weight: 500;
+    }
+    .button { background: #007bff; color: white; }
+    .button:hover { background: #0056b3; }
+    .button-secondary { background-color: #6c757d; color: white; }
+    .button-secondary:hover { background-color: #5a6268; }
+    .button-warning { background-color: #ffc107; color: #212529; border: 1px solid #e0a800; }
+    .button-warning:hover { background-color: #e0a800; }
+    .button-danger { /* Estilo para borrar */
+        background-color: #dc3545; /* Rojo */
+        color: white;
+        border: 1px solid #c82333;
+    }
+    .button-danger:hover {
+        background-color: #c82333;
+    }
+
+
+    /* Estilos para la tabla de observaciones */
+    #tablaObservaciones { margin-top: 2rem; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
+    th, td { border: 1px solid #dee2e6; padding: 0.6rem 0.8rem; text-align: left; font-size: 0.9rem; vertical-align: middle; }
+    th { background-color: #e9ecef; font-weight: bold; color: #495057; }
+    tbody tr:nth-child(odd) { background-color: #f8f9fa; }
+    tbody tr:hover { background-color: #e2e6ea; }
+    td:nth-child(4), td:nth-child(5), td:nth-child(6) { text-align: center; }
+    td:nth-child(7) { font-family: monospace; font-size: 0.8em; word-break: break-all; }
+    td button { padding: 3px 6px; font-size: 0.8em; margin-right: 4px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc; background-color: #f1f1f1; }
+    td button:hover { background-color: #ddd; }
+    td button[onclick*="eliminar"] { color: #dc3545; border-color: #dc3545; }
+    td button[onclick*="eliminar"]:hover { background-color: #dc3545; color: white; }
+
+    /* Responsive */
+    @media (max-width: 650px) {
+      body { padding: 0.5rem; max-width: 100%; }
+      h1 { font-size: 1.4rem; }
+       .items-grid {
+          gap: 0.8rem; /* Mantenemos dos columnas pero con gap reducido */
+       }
+      th, td { padding: 0.4rem 0.5rem; font-size: 0.8rem; }
+      .button, .button-secondary, .button-warning, .button-danger { padding: 0.7rem 0.8rem; font-size: 0.85rem; }
+      .score { font-size: 1.1rem; margin-top: 1rem;}
+      .dimension { padding: 0.6rem 0.8rem; margin-top: 1rem;}
+      .dimension h3 { font-size: 1em; margin-bottom: 0.8rem;}
+      .btn-cycle { font-size: 0.85rem; padding: 0.5rem 0.6rem;}
+      .item label { font-size: 0.8rem; margin-bottom: 0.2rem;}
+      .action-buttons { grid-template-columns: 1fr 1fr; gap: 0.5rem;}
+      select, input[type="date"], input[type="file"]#file { font-size: 0.9rem; padding: 0.6rem;}
+      #btnCargarUltima { font-size: 0.8rem; padding: 0.5rem 0.8rem;}
+    }
+     /* Ajuste fino para pantallas muy pequeñas si los botones de acción no caben en 2 cols */
+    @media (max-width: 400px) {
+        .action-buttons {
+            grid-template-columns: 1fr; /* Forzar 1 columna en pantallas muy estrechas */
+        }
+    }
+
+  </style>
+</head>
+<body onload="restaurarEstado()">
+  <h1>📝 Observación Motivación</h1>
+
+  <label for="file">📁 Cargar Estudiantes (.txt):</label>
+  <input type="file" id="file" accept=".txt" onchange="cargarEstudiantes(event)">
+  <div id="nombreFichero"></div>
+
+  <label for="fecha">📅 Fecha:</label>
+  <input type="date" id="fecha" onchange="guardarUltimaFecha(); cargarFormulario()">
+
+  <label for="grupo">👥 Grupo:</label>
+  <select id="grupo" onchange="actualizarEstudiantes()">
+    <option value="">-- Grupo --</option>
+  </select>
+
+  <label for="estudiante">🧑‍🎓 Estudiante:</label>
+  <select id="estudiante" onchange="cargarFormulario()">
+    <option value="">-- Estudiante --</option>
+  </select>
+
+  <button id="btnCargarUltima" class="button-secondary" onclick="cargarUltimaObservacionEstudiante()">
+     Cargar Última Obs. Estudiante
+  </button>
+
+  <div class="nuevo-registro" id="mensajeNuevo">ℹ️ Registro nuevo para esta fecha/estudiante.</div>
+
+  <div id="items">
+      </div>
+
+  <div class="score" id="resultado">Motivación: 0% (0/0 resp.)</div>
+
+  <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="procesarImportacionCSV(event)">
+
+  <div class="action-buttons">
+      <button class="button" onclick="guardarDatos()">💾 Guardar</button>
+      <button class="button" onclick="mostrarObservaciones()">🔄 Ver Tabla</button>
+      <button class="button" onclick="exportarCSV()">📄 Exportar CSV</button>
+      <button class="button-warning" onclick="document.getElementById('importFile').click();">📥 Importar CSV</button>
+      <button class="button" onclick="exportarSQL()">💾 Exportar SQL (PostgreSQL)</button> <button class="button-danger" onclick="borrarTodosLosRegistros()">🗑️ Borrar Todo</button>
+  </div>
+
+  <div id="tablaObservaciones">
+      </div>
+
+  <script>
+    // --- CONSTANTES Y CONFIGURACIÓN ---
+    const indicadores = [
+      /* 0 */ "Centrado/a en tarea (sin distracciones).",
+      /* 1 */ "Interés visual/corporal (atención, postura).",
+      /* 2 */ "Persiste ante errores (no se rinde).",
+      /* 3 */ "Busca recursos/ayuda al atascarse.",
+      /* 4 */ "Comenta/pregunta sobre lo técnico.",
+      /* 5 */ "Explica/comparte soluciones técnicas.",
+      /* 6 */ "Toma decisiones propias (sin esperar).",
+      /* 7 */ "Gestiona bien el tiempo.",
+      /* 8 */ "Muestra entusiasmo/satisfacción (sonríe).",
+      /* 9 */ "Expresiones positivas (verbaliza interés)."
+    ];
+    const dimensiones = [
+        { nombre: "Atención y concentración", indicadoresIndices: [0, 1] },
+        { nombre: "Persistencia ante la dificultad", indicadoresIndices: [2, 3] },
+        { nombre: "Interacción significativa", indicadoresIndices: [4, 5] },
+        { nombre: "Autonomía", indicadoresIndices: [6, 7] },
+        { nombre: "Expresiones emocionales positivas", indicadoresIndices: [8, 9] }
+    ];
+    const buttonStates = {
+        "": { next: "1", text: "Marcar", className: "btn-state-unmarked" },
+        "1": { next: "0", text: "✔️ Sí", className: "btn-state-yes" },
+        "0": { next: "", text: "❌ No", className: "btn-state-no" }
+    };
+    const NUM_INDICADORES = indicadores.length;
+
+    // --- ELEMENTOS DEL DOM ---
+    const itemsDiv = document.getElementById("items");
+    const resultadoDiv = document.getElementById("resultado");
+    const fechaInput = document.getElementById("fecha");
+    const grupoSelect = document.getElementById("grupo");
+    const estudianteSelect = document.getElementById("estudiante");
+    const nombreFicheroDiv = document.getElementById("nombreFichero");
+    const mensajeNuevoDiv = document.getElementById("mensajeNuevo");
+    const tablaObservacionesDiv = document.getElementById("tablaObservaciones");
+    const importFileInput = document.getElementById("importFile");
+
+    // --- ESTADO ---
+    let estudiantesPorGrupo = {};
+
+    // --- INICIALIZACIÓN ---
+    function generarFormularioHTML() { /* ... (sin cambios) ... */
+        itemsDiv.innerHTML = '';
+        dimensiones.forEach(dimension => {
+            const dimensionDiv = document.createElement("div"); dimensionDiv.classList.add("dimension");
+            const titulo = document.createElement("h3"); titulo.textContent = dimension.nombre; dimensionDiv.appendChild(titulo);
+            const itemsContainer = document.createElement("div"); itemsContainer.classList.add("items-grid"); dimensionDiv.appendChild(itemsContainer);
+            dimension.indicadoresIndices.forEach(i => {
+                const textoIndicador = indicadores[i];
+                const itemDiv = document.createElement("div"); itemDiv.classList.add("item");
+                const label = document.createElement("label"); label.htmlFor = `btn-item-${i}`; label.textContent = `${i + 1}. ${textoIndicador}`;
+                const cycleButton = document.createElement("button"); cycleButton.id = `btn-item-${i}`; cycleButton.classList.add("btn-cycle");
+                const initialState = buttonStates[""]; cycleButton.textContent = initialState.text; cycleButton.classList.add(initialState.className);
+                cycleButton.setAttribute("onclick", `cycleState(${i}, this)`); cycleButton.setAttribute("type", "button");
+                const hiddenInput = document.createElement("input"); hiddenInput.type = "hidden"; hiddenInput.id = `item${i}`; hiddenInput.value = "";
+                itemDiv.appendChild(label); itemDiv.appendChild(cycleButton); itemDiv.appendChild(hiddenInput);
+                itemsContainer.appendChild(itemDiv);
+            });
+            itemsDiv.appendChild(dimensionDiv);
+        });
+    }
+    generarFormularioHTML();
+
+    // --- FUNCIONES (sin cambios lógicos en las existentes) ---
+    function cycleState(index, buttonEl) { const h = document.getElementById(`item${index}`); if (!h || !buttonEl) return; const cV = h.value; const nS = buttonStates[cV]?.next; if (nS !== undefined) { const nCfg = buttonStates[nS]; h.value = nS; buttonEl.textContent = nCfg.text; buttonEl.classList.remove('btn-state-unmarked', 'btn-state-yes', 'btn-state-no'); buttonEl.classList.add(nCfg.className); calcularScore(); } else { console.error(`Estado inválido: ${cV} en ${index}`); setButtonState(index, ""); calcularScore(); } }
+    function setButtonState(index, value) { const b = document.getElementById(`btn-item-${index}`); const h = document.getElementById(`item${index}`); if (b && h) { const sCfg = buttonStates[value] || buttonStates[""]; h.value = value; b.textContent = sCfg.text; b.classList.remove('btn-state-unmarked', 'btn-state-yes', 'btn-state-no'); b.classList.add(sCfg.className); } }
+    function restaurarEstado() { const uF = localStorage.getItem("ultimaFecha"); if (uF) { fechaInput.value = uF; } else { fechaInput.valueAsDate = new Date(); guardarUltimaFecha(); } const uFi = localStorage.getItem("nombreFichero"); if (uFi) { nombreFicheroDiv.textContent = `Archivo: ${uFi}`; const dG = localStorage.getItem("estudiantesPorGrupo"); if(dG){ try { estudiantesPorGrupo = JSON.parse(dG); actualizarGrupos(); } catch(e) { console.error("Err parseando est:", e); localStorage.removeItem("estudiantesPorGrupo"); } } } else { nombreFicheroDiv.textContent = "Ningún archivo."; } mostrarObservaciones(); }
+    function guardarUltimaFecha() { localStorage.setItem("ultimaFecha", fechaInput.value); }
+    function cargarEstudiantes(event) { const f = event.target.files[0]; if (!f) { nombreFicheroDiv.textContent = "Ningún archivo."; return; } nombreFicheroDiv.textContent = `Cargando: ${f.name}...`; const r = new FileReader(); r.onload = function(e) { try { estudiantesPorGrupo = {}; const l = e.target.result.trim().split(/[\r\n]+/); l.forEach(ln => { if (!ln.trim()) return; const p = ln.split("\t"); if (p.length >= 2) { const g = p[0].trim(); const n = p[1].trim(); if (g && n) { if (!estudiantesPorGrupo[g]) estudiantesPorGrupo[g] = []; if (!estudiantesPorGrupo[g].includes(n)) estudiantesPorGrupo[g].push(n); } else { console.warn(`Línea ignorada: "${ln}"`); } } else { console.warn(`Línea ignorada: "${ln}"`); } }); const gO = Object.keys(estudiantesPorGrupo).sort(); const eO = {}; gO.forEach(g => { eO[g] = estudiantesPorGrupo[g].sort(); }); estudiantesPorGrupo = eO; localStorage.setItem("nombreFichero", f.name); localStorage.setItem("estudiantesPorGrupo", JSON.stringify(estudiantesPorGrupo)); nombreFicheroDiv.textContent = `Archivo: ${f.name}`; actualizarGrupos(); } catch (error) { console.error("Err procesando:", error); nombreFicheroDiv.textContent = `Error en ${f.name}.`; alert(`Error: ${error.message}`); localStorage.removeItem("nombreFichero"); localStorage.removeItem("estudiantesPorGrupo"); estudiantesPorGrupo = {}; actualizarGrupos(); } }; r.onerror = function() { console.error("Err leyendo:", r.error); nombreFicheroDiv.textContent = `Error al leer ${f.name}.`; alert("Error al leer."); }; r.readAsText(f); }
+    function actualizarGrupos() { grupoSelect.innerHTML = '<option value="">-- Grupo --</option>'; Object.keys(estudiantesPorGrupo).forEach(g => { const o = document.createElement("option"); o.value = g; o.textContent = g; grupoSelect.appendChild(o); }); estudianteSelect.innerHTML = '<option value="">-- Estudiante --</option>'; limpiarFormulario(); }
+    function actualizarEstudiantes() { const gS = grupoSelect.value; const est = estudiantesPorGrupo[gS] || []; estudianteSelect.innerHTML = '<option value="">-- Estudiante --</option>'; est.forEach(n => { const o = document.createElement("option"); o.value = n; o.textContent = n; estudianteSelect.appendChild(o); }); limpiarFormulario(); }
+    function limpiarFormulario() { for (let i = 0; i < NUM_INDICADORES; i++) { setButtonState(i, ""); } calcularScore(); mensajeNuevoDiv.style.display = "none"; }
+    function calcularScore() { let tR = 0; let si = 0; for (let i = 0; i < NUM_INDICADORES; i++) { const h = document.getElementById(`item${i}`); if (h) { const v = h.value; if (v === "0" || v === "1") { tR++; if (v === "1") si++; } } } const sc = tR > 0 ? Math.round((si / tR) * 100) : 0; resultadoDiv.textContent = `Motivación: ${sc}% (${si}/${tR} resp.)`; }
+    function guardarDatos() { const f = fechaInput.value; const g = grupoSelect.value; const e = estudianteSelect.value; if (!f || !g || !e) { alert("❌ Error: Selecciona fecha, grupo y estudiante."); return; } const resp = []; for (let i = 0; i < NUM_INDICADORES; i++) { const h = document.getElementById(`item${i}`); resp.push(h ? h.value : ""); } const aR = resp.some(r => r === "0" || r === "1"); if (!aR) { if (!confirm("⚠️ Aviso: Sin respuestas.\n¿Guardar?")) return; } let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (err) { console.error("Err parseando:", err); alert("Error leyendo datos."); regs = []; } let v = 1; const rDia = regs.filter(r => r.fecha === f && r.estudiante === e).sort((a, b) => (b.version || 1) - (a.version || 1)); const rEx = rDia[0]; if (rEx) { v = (rEx.version || 1) + 1; const iEx = regs.findIndex(r => r.fecha === rEx.fecha && r.estudiante === rEx.estudiante && (r.version || 1) === (rEx.version || 1)); if(iEx !== -1) { regs.splice(iEx, 1); } else { console.warn("Índice no encontrado."); } } regs.push({ fecha: f, grupo: g, estudiante: e, respuestas: resp, version: v }); try { localStorage.setItem("observaciones", JSON.stringify(regs)); mensajeNuevoDiv.style.display = "none"; alert(`✅ Guardado (Est: ${e}, Fecha: ${f}, V: ${v})`); mostrarObservaciones(); } catch (err) { console.error("Err guardando:", err); alert(`Error guardando.\n${err.message}`); } }
+    function cargarFormulario() { limpiarFormulario(); const f = fechaInput.value; const e = estudianteSelect.value; if (!f || !e) return; let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (err) { console.error("Err parseando:", err); regs = []; } const rDia = regs.filter(r => r.fecha === f && r.estudiante === e).sort((a, b) => (b.version || 1) - (a.version || 1)); const reg = rDia[0]; mensajeNuevoDiv.style.display = reg ? "none" : "block"; if (reg) { if (reg.respuestas && Array.isArray(reg.respuestas)) { for (let i = 0; i < NUM_INDICADORES; i++) { const vG = (i < reg.respuestas.length) ? reg.respuestas[i] : ''; setButtonState(i, vG); } } else { console.warn("Registro sin 'respuestas'.", reg); mensajeNuevoDiv.style.display = "block"; } } calcularScore(); }
+    function cargarUltimaObservacionEstudiante() { const eSel = estudianteSelect.value; if (!eSel) { alert("ℹ️ Selecciona un estudiante."); return; } let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (e) { console.error("Err parseando:", e); alert("❌ Error leyendo datos."); return; } const obsEst = regs.filter(r => r.estudiante === eSel); if (obsEst.length === 0) { alert(`ℹ️ No hay obs. previas para ${eSel}.`); return; } obsEst.sort((a, b) => { if (a.fecha > b.fecha) return -1; if (a.fecha < b.fecha) return 1; return (b.version || 1) - (a.version || 1); }); const ultObs = obsEst[0]; console.log("Cargando última:", ultObs); fechaInput.value = ultObs.fecha; guardarUltimaFecha(); grupoSelect.value = ultObs.grupo; actualizarEstudiantes(); estudianteSelect.value = ultObs.estudiante; cargarFormulario(); alert(`✅ Cargada última obs. para ${ultObs.estudiante} (Fecha: ${ultObs.fecha}, V: ${ultObs.version || 1}).`); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function mostrarObservaciones() { let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (e) { console.error("Err parseando:", e); tablaObservacionesDiv.innerHTML = "<p style='color:red;'>Error al leer.</p>"; return; } if (regs.length === 0) { tablaObservacionesDiv.innerHTML = "<p>No hay observaciones.</p>"; return; } regs.sort((a, b) => { if (a.fecha > b.fecha) return -1; if (a.fecha < b.fecha) return 1; if (a.estudiante < b.estudiante) return -1; if (a.estudiante > b.estudiante) return 1; return (b.version || 1) - (a.version || 1); }); let html = `<table><thead><tr><th>Fecha</th><th>Grupo</th><th>Estudiante</th><th>Versión</th><th>Nº Resp.</th><th>Motivación (%)</th><th>Respuestas (S/N/-)</th><th>Acciones</th></tr></thead><tbody>`; regs.forEach((reg, index) => { const resp = Array.isArray(reg.respuestas) ? reg.respuestas : []; const tR = resp.filter(r => r === "0" || r === "1").length; const si = resp.filter(r => r === "1").length; const sc = tR > 0 ? Math.round((si / tR) * 100) : 0; const nInd = NUM_INDICADORES; const rStr = resp.slice(0, nInd).map(r => r === '1' ? 'S' : (r === '0' ? 'N' : '-')).join(''); html += `<tr><td>${reg.fecha || 'N/A'}</td><td>${reg.grupo || 'N/A'}</td><td>${reg.estudiante || 'N/A'}</td><td style="text-align:center;">${reg.version || 1}</td><td style="text-align:center;">${tR}</td><td style="text-align:center;">${sc}%</td><td style="font-family:monospace; font-size:0.8em;">${rStr}</td><td><button onclick="cargarObservacion(${index})" title="Cargar">Cargar</button> <button onclick="eliminarObservacion(${index})" title="Eliminar">Eliminar</button></td></tr>`; }); html += '</tbody></table>'; tablaObservacionesDiv.innerHTML = html; }
+    function cargarObservacion(index) { let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (e) { console.error("Err parseando:", e); alert("Error leyendo datos."); return; } regs.sort((a, b) => { if (a.fecha > b.fecha) return -1; if (a.fecha < b.fecha) return 1; if (a.estudiante < b.estudiante) return -1; if (a.estudiante > b.estudiante) return 1; return (b.version || 1) - (a.version || 1); }); const reg = regs[index]; if (reg) { if (!estudiantesPorGrupo[reg.grupo] || !estudiantesPorGrupo[reg.grupo].includes(reg.estudiante)) { alert(`Aviso: Grupo "${reg.grupo}" o est. "${reg.estudiante}" no encontrados.`); } fechaInput.value = reg.fecha; grupoSelect.value = reg.grupo; actualizarEstudiantes(); estudianteSelect.value = reg.estudiante; cargarFormulario(); window.scrollTo({ top: 0, behavior: 'smooth' }); } else { alert("Error: Obs. no encontrada."); } }
+    function eliminarObservacion(index) { let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (e) { console.error("Err parseando:", e); alert("Error leyendo datos."); return; } regs.sort((a, b) => { if (a.fecha > b.fecha) return -1; if (a.fecha < b.fecha) return 1; if (a.estudiante < b.estudiante) return -1; if (a.estudiante > b.estudiante) return 1; return (b.version || 1) - (a.version || 1); }); const rAE = regs[index]; if (!rAE) { alert("Error: Obs. a eliminar no encontrada."); return; } if (confirm(`¿Eliminar obs. para ${rAE.estudiante} del ${rAE.fecha} (V ${rAE.version || 1})?`)) { let rOrig = []; try { rOrig = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(rOrig)) rOrig = []; } catch (e) {} const iR = rOrig.findIndex(r => r.fecha === rAE.fecha && r.estudiante === rAE.estudiante && (r.version || 1) === (rAE.version || 1)); if (iR !== -1) { rOrig.splice(iR, 1); try { localStorage.setItem("observaciones", JSON.stringify(rOrig)); mostrarObservaciones(); if (fechaInput.value === rAE.fecha && estudianteSelect.value === rAE.estudiante) { limpiarFormulario(); } alert("Obs. eliminada."); } catch (err) { console.error("Err guardando tras elim:", err); alert("Error guardando cambios."); } } else { console.error("Err: Índice real no encontrado.", rAE); alert("Error interno al eliminar."); } } }
+    function exportarCSV() { let regs = []; try { regs = JSON.parse(localStorage.getItem("observaciones") || "[]"); if (!Array.isArray(regs)) regs = []; } catch (e) { console.error("Err parseando:", e); alert("Error leyendo datos."); return; } if (!regs.length) { alert("No hay datos."); return; } let hdr = "fecha,grupo,estudiante,version,motivacion_pct,total_respondidos,num_si"; indicadores.forEach((_, i) => { hdr += `,indicador_${i + 1}_resp`; }); hdr += "\n"; let csv = hdr; regs.forEach(reg => { const r = Array.isArray(reg.respuestas) ? reg.respuestas : []; const tR = r.filter(r => r === "0" || r === "1").length; const si = r.filter(r => r === "1").length; const m = tR > 0 ? Math.round((si / tR) * 100) : 0; const eCSV = (reg.estudiante || "").replace(/"/g, '""'); const gCSV = (reg.grupo || "").replace(/"/g, '""'); let row = `${reg.fecha || ''},"${gCSV}","${eCSV}",${reg.version || 1},${m},${tR},${si}`; indicadores.forEach((_, i) => { const resp = (i < r.length) ? (r[i] || '') : ''; row += `,"${resp}"`; }); csv += row + "\n"; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; const fA = new Date().toISOString().slice(0,10).replace(/-/g, ''); a.download = `observaciones_motivacion_${fA}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); alert("Exportación CSV iniciada."); }
+
+    /**
+     * Exporta las observaciones guardadas a un archivo SQL (formato PostgreSQL).
+     * Crea una tabla llamada 'regmot' e inserta los datos.
+     */
+    function exportarSQL() {
+      let registros = [];
+       try {
+          registros = JSON.parse(localStorage.getItem("observaciones") || "[]");
+          if (!Array.isArray(registros)) registros = [];
+      } catch (e) {
+           console.error("Error al parsear observaciones para exportar SQL:", e);
+           alert("Error al leer los datos guardados para exportar.");
+           return;
+      }
+
+      if (!registros.length) {
+          alert("No hay datos para exportar.");
+          return;
+      }
+
+      // --- SQL Adaptado para PostgreSQL ---
+      let sql = `/* --- Exportación Observaciones Motivación (PostgreSQL) --- */\n\n`;
+      sql += `DROP TABLE IF EXISTS regmot;\n\n`; // Nombre tabla corto
+      sql += `CREATE TABLE regmot (\n`;
+      sql += `  id SERIAL PRIMARY KEY,\n`; // PostgreSQL autoincrement
+      sql += `  fecha DATE,\n`; // Tipo DATE estándar
+      sql += `  grupo TEXT,\n`;
+      sql += `  estudiante TEXT,\n`;
+      sql += `  version INTEGER DEFAULT 1,\n`;
+      sql += `  motivacion_pct INTEGER,\n`;
+      sql += `  total_respondidos INTEGER,\n`;
+      sql += `  num_si INTEGER`;
+      indicadores.forEach((_, i) => {
+          sql += `,\n  indicador_${i + 1}_resp TEXT`; // TEXT es adecuado para '0', '1', ''
+      });
+      sql += `\n);\n\n`;
+      sql += `/* --- Datos --- */\n`;
+
+      // Crear sentencias INSERT (estándar SQL, compatibles)
+      registros.forEach(reg => {
+        const respuestas = Array.isArray(reg.respuestas) ? reg.respuestas : [];
+        const totalRespondidos = respuestas.filter(r => r === "0" || r === "1").length;
+        const si = respuestas.filter(r => r === "1").length;
+        const motivacion = totalRespondidos > 0 ? Math.round((si / totalRespondidos) * 100) : 0;
+        // Escapar comillas simples para SQL
+        const estudianteSQL = (reg.estudiante || '').replace(/'/g, "''");
+        const grupoSQL = (reg.grupo || '').replace(/'/g, "''");
+        const fechaSQL = reg.fecha || ''; // Asumir formato YYYY-MM-DD
+
+        let cols = `fecha, grupo, estudiante, version, motivacion_pct, total_respondidos, num_si`;
+        // Usar NULLIF para convertir '' en NULL si se prefiere, o simplemente insertar ''
+        // PostgreSQL maneja bien las fechas en formato 'YYYY-MM-DD'
+        let vals = `NULLIF('${fechaSQL}', '')::DATE, '${grupoSQL}', '${estudianteSQL}', ${reg.version || 1}, ${motivacion}, ${totalRespondidos}, ${si}`;
+
+        indicadores.forEach((_, i) => {
+            cols += `, indicador_${i + 1}_resp`;
+            const respuesta = (i < respuestas.length) ? (respuestas[i] || '') : '';
+            // Insertar como texto, escapando comillas. '' se inserta como string vacío.
+            vals += `, '${respuesta.replace(/'/g, "''")}'`;
+        });
+
+        // Usar nombre de tabla corto
+        sql += `INSERT INTO regmot (${cols}) VALUES (${vals});\n`;
+      });
+
+      // Crear y descargar el archivo
+      const blob = new Blob([sql], { type: 'text/sql;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fechaActual = new Date().toISOString().slice(0,10).replace(/-/g, '');
+      a.download = `regmot_export_${fechaActual}.sql`; // Nombre archivo con tabla corta
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert("Exportación SQL (PostgreSQL) iniciada.");
+    }
+
+    function procesarImportacionCSV(event) { const file = event.target.files[0]; const inputElement = event.target; if (!file) { console.log("No se seleccionó archivo."); return; } if (!confirm("⚠️ ¡ATENCIÓN!\n\n¿Importar CSV?\nTODAS las observaciones actuales se BORRARÁN.")) { inputElement.value = null; console.log("Importación cancelada."); return; } const reader = new FileReader(); reader.onload = function(e) { try { const csvContent = e.target.result; const lineas = csvContent.trim().split(/[\r\n]+/); if (lineas.length < 2) { throw new Error("CSV vacío o sin datos."); } const cabeceraRecibida = lineas[0].trim(); const cabeceraEsperada = generarCabeceraCSVEsperada(); if (cabeceraRecibida !== cabeceraEsperada) { console.error("Cabecera recibida:", cabeceraRecibida); console.error("Cabecera esperada:", cabeceraEsperada); throw new Error(`Formato cabecera CSV incorrecto.\nEsperada:\n${cabeceraEsperada}`); } const datosImportados = []; for (let i = 1; i < lineas.length; i++) { const linea = lineas[i].trim(); if (!linea) continue; const campos = parseCSVLine(linea); const numCamposEsperados = 7 + NUM_INDICADORES; if (campos.length < numCamposEsperados) { console.warn(`Línea ${i+1} ignorada: campos insuficientes (${campos.length}/${numCamposEsperados}).`); continue; } const fecha = campos[0]; const grupo = campos[1]; let estudiante = campos[2]; if (estudiante.startsWith('"') && estudiante.endsWith('"')) { estudiante = estudiante.substring(1, estudiante.length - 1).replace(/""/g, '"'); } const version = parseInt(campos[3]) || 1; const respuestas = []; for (let j = 0; j < NUM_INDICADORES; j++) { const idxCampo = 7 + j; let vResp = (idxCampo < campos.length) ? campos[idxCampo] : ''; if (vResp.startsWith('"') && vResp.endsWith('"')) { vResp = vResp.substring(1, vResp.length - 1); } if (vResp !== '0' && vResp !== '1') { vResp = ''; } respuestas.push(vResp); } datosImportados.push({ fecha: fecha, grupo: grupo, estudiante: estudiante, version: version, respuestas: respuestas }); } localStorage.setItem("observaciones", JSON.stringify(datosImportados)); mostrarObservaciones(); limpiarFormulario(); alert(`✅ Importación completada!\n${datosImportados.length} observaciones importadas.\nDatos anteriores reemplazados.`); } catch (error) { console.error("Error importación:", error); alert(`❌ Error importación:\n${error.message}`); } finally { inputElement.value = null; } }; reader.onerror = function() { console.error("Error leyendo archivo:", reader.error); alert("❌ Error al leer archivo."); inputElement.value = null; }; reader.readAsText(file); }
+    function generarCabeceraCSVEsperada() { let h = "fecha,grupo,estudiante,version,motivacion_pct,total_respondidos,num_si"; for (let i = 0; i < NUM_INDICADORES; i++) { h += `,indicador_${i + 1}_resp`; } return h; }
+    function parseCSVLine(line) { const f = []; let cF = ''; let iQ = false; for (let i = 0; i < line.length; i++) { const c = line[i]; if (c === '"') { if (iQ && line[i + 1] === '"') { cF += '"'; i++; } else { iQ = !iQ; } } else if (c === ',' && !iQ) { f.push(cF); cF = ''; } else { cF += c; } } f.push(cF); return f.map(fld => fld.trim()); }
+
+    function borrarTodosLosRegistros() {
+        if (confirm("⚠️ ¿Estás ABSOLUTAMENTE SEGURO de que quieres borrar TODAS las observaciones guardadas?\n\n¡¡ESTA ACCIÓN ES IRREVERSIBLE!!")) {
+            if (confirm("ÚLTIMA OPORTUNIDAD:\n\n¿Confirmas el borrado DEFINITIVO de todos los datos?")) {
+                try { localStorage.removeItem("observaciones"); mostrarObservaciones(); limpiarFormulario(); alert("✅ Todas las observaciones han sido borradas."); }
+                catch (e) { console.error("Error al borrar:", e); alert("❌ Error al borrar."); }
+            } else { alert("ℹ️ Borrado cancelado."); }
+        } else { alert("ℹ️ Borrado cancelado."); }
+    }
+
+    // --- EJECUCIÓN INICIAL ---
+    restaurarEstado();
+
+  </script>
+</body>
+</html>
